@@ -1,0 +1,43 @@
+parameters:
+    crm.url: '%env(string:CRM_URL)%'
+    crm.key: '%env(string:CRM_KEY)%'
+    crm.site: '%env(string:CRM_SITE)%'
+    crm.sites: '%env(string:CRM_SITES)%'
+    redis: '%env(string:REDIS_ORDERS_DSN)%'
+
+services:
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+            - '../src/Tests/'
+
+    App\Factory\SimlaApiFactory: ~
+
+    RetailCrm\Api\Client:
+        factory: [ '@App\Factory\SimlaApiFactory', 'createClient' ]
+        arguments: [ '%crm.url%', '%crm.key%' ]
+
+    App\Service\StockService:
+        arguments:
+            $generalSiteCode: '%crm.site%'
+            $anotherSiteCodes: '%crm.sites%'
+
+    monolog.formatter.session_request:
+        class: Monolog\Formatter\LineFormatter
+        arguments:
+            - "[%%datetime%%] [%%extra.token%%] %%channel%%.%%level_name%%: %%message%% %%context%% %%extra%%\n"
+
+    App\Logger\SessionRequestProcessor:
+        tags:
+            - { name: monolog.processor, handler: main }
+
+    App\Service\RedisService:
+        arguments:
+            $dsn: '%redis%'

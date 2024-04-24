@@ -1,0 +1,31 @@
+framework:
+    messenger:
+        # Uncomment this (and the failed transport below) to send failed messages to this transport for later handling.
+#        failure_transport: failed
+
+        default_bus: order.bus
+        buses:
+            order.bus:
+                middleware:
+                    - 'App\Middleware\LoggerMiddleware'
+
+        transports:
+            orders:
+                dsn: "%env(ORDERS_TRANSPORT_DSN)%"
+                options:
+                    tube_name: orders
+                retry_strategy:
+                    max_retries: 5
+                    delay: 120000
+                    multiplier: 1
+                    max_delay: 0
+            sync: 'sync://'
+            # https://symfony.com/doc/current/messenger.html#transport-configuration
+            # async: '%env(MESSENGER_TRANSPORT_DSN)%'
+            # failed: 'doctrine://default?queue_name=failed'
+            # sync: 'sync://'
+
+        routing:
+            'App\Job\UpdateOrderEvent': orders
+            # Route your messages to the transports
+            # 'App\Message\YourMessage': async

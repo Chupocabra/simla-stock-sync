@@ -1,0 +1,8 @@
+#index:
+#    path: /
+#    controller: App\Controller\DefaultController::index
+
+update-stock:
+  path: /update
+  controller: App\Controller\StockController::updateByOrder
+  methods: POST
