@@ -12,8 +12,6 @@ framework:
         transports:
             orders:
                 dsn: "%env(ORDERS_TRANSPORT_DSN)%"
-                options:
-                    tube_name: orders
                 retry_strategy:
                     max_retries: 5
                     delay: 120000
