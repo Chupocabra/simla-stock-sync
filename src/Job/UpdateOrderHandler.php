@@ -45,6 +45,8 @@ class UpdateOrderHandler implements MessageHandlerInterface
                     $keys[] = $this->redisService->set($simpleArticle, true);
 
                     $this->logger->debug(sprintf('Article %s consumed', $simpleArticle));
+                } else if (in_array($simpleArticle, $keys, true)) {
+                    $this->logger->debug(sprintf('Article %s already consumed in that order', $simpleArticle));
                 } else {
                     $this->releaseKeys($keys);
 
