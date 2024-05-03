@@ -245,6 +245,7 @@ class StockService extends SimlaCommonService
         $filter               = new  InventoryFilterType();
         $filter->offerArticle = [$article];
         $filter->sites = [$this->generalSiteCode];
+        $filter->offerActive = 1;
 
         if ($this->anotherSiteCodes && !empty(current($this->anotherSiteCodes))) {
             foreach ($this->anotherSiteCodes as $site) {
