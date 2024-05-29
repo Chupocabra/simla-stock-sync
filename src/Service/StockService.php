@@ -99,6 +99,10 @@ class StockService extends SimlaCommonService
                 $status = $kitData['status'];
             }
 
+            if (isset($kitData['errorMessages'])) {
+                $errorMessages = $kitData['errorMessages'];
+            }
+
             if (isset($kitData['offers'], $kitData['inventories']) && $status !== self::PRODUCT_STATUS_ERROR) {
                 $inventories = $kitData['inventories'];
                 $offers = $kitData['offers'];
@@ -184,6 +188,7 @@ class StockService extends SimlaCommonService
     private function isEveryKitItemAvailable(string $article, int $quantity, bool $supplement): array
     {
         $kitData = [];
+        $errorMessages = [];
 
         foreach (explode(';', $article) as $simpleArticle) {
             $articleAndQuantity = explode('*', $simpleArticle);
@@ -207,6 +212,12 @@ class StockService extends SimlaCommonService
             } catch (Exception | ApiExceptionInterface | ClientExceptionInterface $e) {
                 $this->logError($e);
 
+                $errorMessages[$simpleArticle] = sprintf(
+                    '`%s` error: %s',
+                    $simpleArticle,
+                    $e->getMessage()
+                );
+
                 $status = self::PRODUCT_STATUS_ERROR;
             }
         }
@@ -221,6 +232,10 @@ class StockService extends SimlaCommonService
 
         if (isset($status)) {
             $kitData['status'] = $status;
+        }
+
+        if (!empty($errorMessages)) {
+            $kitData['errorMessages'] = $errorMessages;
         }
 
         return $kitData;
