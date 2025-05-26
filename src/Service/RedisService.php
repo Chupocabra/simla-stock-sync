@@ -65,4 +65,9 @@ class RedisService
             $this->release();
         }
     }
+
+    protected function getName(): string
+    {
+        return 'rand_' . rand(10000, 99999);
+    }
 }
