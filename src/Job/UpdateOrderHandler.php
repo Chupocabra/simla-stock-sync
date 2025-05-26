@@ -39,6 +39,10 @@ class UpdateOrderHandler implements MessageHandlerInterface
         $keys = [];
         foreach ($articles as $item => $article) {
             foreach (explode(';', $article) as $simpleArticle) {
+                if ($simpleArticle === '') {
+                    continue;
+                }
+
                 $simpleArticle = explode('*', $simpleArticle)[0];
 
                 if (!$this->redisService->get($simpleArticle)) {
