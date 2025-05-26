@@ -4,6 +4,8 @@ parameters:
     crm.site: '%env(string:CRM_SITE)%'
     crm.sites: '%env(string:CRM_SITES)%'
     redis: '%env(string:REDIS_ORDERS_DSN)%'
+    notifierClientId: '%env(string:NOTIFIER_CLIENT_ID)%'
+    notifierCustomField: '%env(string:NOTIFIER_CUSTOM_FIELD)%'
 
 services:
     _defaults:
@@ -41,3 +43,8 @@ services:
     App\Service\RedisService:
         arguments:
             $dsn: '%redis%'
+
+    App\Service\NotifierService:
+        arguments:
+            $notifierClientId: '%notifierClientId%'
+            $notifierCustomField: '%notifierCustomField%'

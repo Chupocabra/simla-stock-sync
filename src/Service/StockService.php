@@ -27,7 +27,7 @@ use Symfony\Component\Console\Command\LockableTrait;
 class StockService extends SimlaCommonService
 {
     // TODO maybe move to env
-    private const GENERAL_STORE_CODE = 'central';
+    public const GENERAL_STORE_CODE = 'central';
 
     private const PRODUCT_STATUS_SOLD = 'sold';
     private const PRODUCT_STATUS_RETURNED = 'returned';
@@ -52,12 +52,18 @@ class StockService extends SimlaCommonService
      */
     private $orderService;
 
+    /**
+     * @var NotifierService
+     */
+    private $notifierService;
+
     use LockableTrait;
 
     public function __construct(
         Client $client,
         LoggerInterface $logger,
         OrderService $orderService,
+        NotifierService $notifierService,
         $generalSiteCode,
         $anotherSiteCodes
     ) {
@@ -66,6 +72,7 @@ class StockService extends SimlaCommonService
         $this->generalSiteCode = $generalSiteCode;
         $this->anotherSiteCodes = explode(',', $anotherSiteCodes);
         $this->orderService    = $orderService;
+        $this->notifierService = $notifierService;
     }
 
     public function updateStock(Order $order): bool
@@ -125,6 +132,8 @@ class StockService extends SimlaCommonService
                         }
 
                         $this->updateOffersStock($currentOffers);
+                        $this->notifierService->prepareForStockChange($currentInventories, $simpleArticle);
+                        $this->notifierService->handleStockChange($currentOffers, $simpleArticle);
 
                         $fixedSkuIdsService->updateFixedSkuIds($item);
                     } catch (Exception | ApiExceptionInterface | ClientExceptionInterface $e) {
