@@ -15,19 +15,22 @@ class NotifierService extends SimlaCommonService
 {
     private const COUNT_THRESHOLD = 10;
     private $notifierClientId;
-    private $notifierCustomField;
+    private $notifierCustomField10;
+    private $notifierCustomField0;
     private array $prevCounts;
 
     public function __construct(
         Client $client,
         LoggerInterface $logger,
         $notifierClientId,
-        $notifierCustomField
+        $notifierCustomField10,
+        $notifierCustomField0
     ) {
         parent::__construct($client, $logger);
 
         $this->notifierClientId = $notifierClientId;
-        $this->notifierCustomField = $notifierCustomField;
+        $this->notifierCustomField10 = $notifierCustomField10;
+        $this->notifierCustomField0 = $notifierCustomField0;
     }
 
     /**
@@ -38,7 +41,7 @@ class NotifierService extends SimlaCommonService
     {
         $count = 0;
         foreach ($inventories as $offer) {
-            if ($offer->site === StockService::GENERAL_STORE_CODE) {
+            if ($offer->site === 'fulfillment-simla-com') {
                 $count = $offer->quantity;
                 break;
             }
@@ -69,13 +72,15 @@ class NotifierService extends SimlaCommonService
 
         $this->logger->debug(sprintf('[%s]: [%s] - (%d)',__METHOD__, $simpleArticle, $count));
 
-        if ($count < self::COUNT_THRESHOLD && $this->getPrevCountFor($simpleArticle) >= self::COUNT_THRESHOLD) {
+        $prevCount = $this->getPrevCountFor($simpleArticle);
+
+        if ($count < self::COUNT_THRESHOLD && $prevCount >= self::COUNT_THRESHOLD) {
             try {
                 $customerEditRequest = new CustomersEditRequest();
-                $customerEditRequest->site = StockService::GENERAL_STORE_CODE;
+                $customerEditRequest->site = 'fulfillment-simla-com';
                 $customerEditRequest->by = ByIdentifier::ID;
                 $customerEditRequest->customer = new Customer();
-                $customerEditRequest->customer->customFields[$this->notifierCustomField] = $simpleArticle;
+                $customerEditRequest->customer->customFields[$this->notifierCustomField10] = $simpleArticle;
 
                 $this->client->customers->edit($this->notifierClientId, $customerEditRequest);
             } catch (ApiExceptionInterface|ClientExceptionInterface $e) {
@@ -87,6 +92,25 @@ class NotifierService extends SimlaCommonService
                 __METHOD__,
                 $simpleArticle,
                 self::COUNT_THRESHOLD)
+            );
+        } else if ($count < 1 && $prevCount >= 1) {
+            try {
+                $customerEditRequest = new CustomersEditRequest();
+                $customerEditRequest->site = 'fulfillment-simla-com';
+                $customerEditRequest->by = ByIdentifier::ID;
+                $customerEditRequest->customer = new Customer();
+                $customerEditRequest->customer->customFields[$this->notifierCustomField0] = $simpleArticle;
+
+                $this->client->customers->edit($this->notifierClientId, $customerEditRequest);
+            } catch (ApiExceptionInterface|ClientExceptionInterface $e) {
+                $this->logError($e);
+            }
+
+            $this->logger->info(sprintf(
+                    '[%s]: count of [%s] less than (%d)',
+                    __METHOD__,
+                    $simpleArticle,
+                    1)
             );
         }
     }
