@@ -42,6 +42,7 @@ class StockService extends SimlaCommonService
             'falta-preparar',
             'falta-preparar-pagados',
             'marketplace',
+            'ups-1',
             self::ORDER_STATUS_RETURNED,
         ];
     private const ORDER_STATUS_RETURNED = 'rehusado-recibido';
