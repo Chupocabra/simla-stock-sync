@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Exception\ServiceOverloadedException;
 use Psr\Log\LoggerInterface;
 use RetailCrm\Api\Client;
 use RetailCrm\Api\Enum\ByIdentifier;
@@ -14,6 +15,7 @@ use RetailCrm\Api\Model\Request\Customers\CustomersEditRequest;
 class NotifierService extends SimlaCommonService
 {
     private const COUNT_THRESHOLD = 10;
+    private const OFFER_SITE = 'fulfillment-simla-com';
     private $notifierClientId;
     private $notifierCustomField10;
     private $notifierCustomField0;
@@ -41,7 +43,7 @@ class NotifierService extends SimlaCommonService
     {
         $count = 0;
         foreach ($inventories as $offer) {
-            if ($offer->site === 'fulfillment-simla-com') {
+            if ($offer->site === self::OFFER_SITE) {
                 $count = $offer->quantity;
                 break;
             }
@@ -58,6 +60,7 @@ class NotifierService extends SimlaCommonService
      * @param Offer[] $offers
      * @param string $simpleArticle
      * @return void
+     * @throws ServiceOverloadedException
      */
     public function handleStockChange(array $offers, string $simpleArticle): void
     {
@@ -75,17 +78,7 @@ class NotifierService extends SimlaCommonService
         $prevCount = $this->getPrevCountFor($simpleArticle);
 
         if ($count < self::COUNT_THRESHOLD && $prevCount >= self::COUNT_THRESHOLD) {
-            try {
-                $customerEditRequest = new CustomersEditRequest();
-                $customerEditRequest->site = 'fulfillment-simla-com';
-                $customerEditRequest->by = ByIdentifier::ID;
-                $customerEditRequest->customer = new Customer();
-                $customerEditRequest->customer->customFields[$this->notifierCustomField10] = $simpleArticle;
-
-                $this->client->customers->edit($this->notifierClientId, $customerEditRequest);
-            } catch (ApiExceptionInterface|ClientExceptionInterface $e) {
-                $this->logError($e);
-            }
+            $this->editCustomerToNotify($this->notifierCustomField10, $simpleArticle);
 
             $this->logger->info(sprintf(
                 '[%s]: count of [%s] less than (%d)',
@@ -94,23 +87,13 @@ class NotifierService extends SimlaCommonService
                 self::COUNT_THRESHOLD)
             );
         } else if ($count < 1 && $prevCount >= 1) {
-            try {
-                $customerEditRequest = new CustomersEditRequest();
-                $customerEditRequest->site = 'fulfillment-simla-com';
-                $customerEditRequest->by = ByIdentifier::ID;
-                $customerEditRequest->customer = new Customer();
-                $customerEditRequest->customer->customFields[$this->notifierCustomField0] = $simpleArticle;
-
-                $this->client->customers->edit($this->notifierClientId, $customerEditRequest);
-            } catch (ApiExceptionInterface|ClientExceptionInterface $e) {
-                $this->logError($e);
-            }
+            $this->editCustomerToNotify($this->notifierCustomField0, $simpleArticle);
 
             $this->logger->info(sprintf(
-                    '[%s]: count of [%s] less than (%d)',
-                    __METHOD__,
-                    $simpleArticle,
-                    1)
+                '[%s]: count of [%s] less than (%d)',
+                __METHOD__,
+                $simpleArticle,
+                1)
             );
         }
     }
@@ -118,5 +101,24 @@ class NotifierService extends SimlaCommonService
     private function getPrevCountFor(string $simpleArticle): int
     {
         return $this->prevCounts[$simpleArticle];
+    }
+
+    /**
+     * @throws ServiceOverloadedException
+     */
+    private function editCustomerToNotify(string $customField, string $article): void
+    {
+        $customerEditRequest = new CustomersEditRequest();
+        $customerEditRequest->site = self::OFFER_SITE;
+        $customerEditRequest->by = ByIdentifier::ID;
+        $customerEditRequest->customer = new Customer();
+        $customerEditRequest->customer->customFields[$customField] = $article;
+
+        try {
+            $this->client->customers->edit($this->notifierClientId, $customerEditRequest);
+        } catch (ApiExceptionInterface|ClientExceptionInterface $e) {
+            $this->checkServiceOverloaded($e);
+            $this->logError($e);
+        }
     }
 }

@@ -2,7 +2,9 @@
 
 namespace App\Service;
 
+use App\Entity\JobStage;
 use App\Exception\OutOfStockException;
+use App\Exception\ServiceOverloadedException;
 use App\Exception\StoreNotFoundException;
 use Exception;
 use Psr\Log\LoggerInterface;
@@ -75,7 +77,7 @@ class StockService extends SimlaCommonService
         $this->notifierService = $notifierService;
     }
 
-    public function updateStock(Order $order): bool
+    public function updateStock(Order $order, JobStage $stage): bool
     {
         if (!$this->isStockChangeAvailable($order)) {
             $this->logger->debug('Skip order due site or status');
@@ -131,13 +133,26 @@ class StockService extends SimlaCommonService
                             }
                         }
 
-                        $this->updateOffersStock($currentOffers);
-                        $this->notifierService->prepareForStockChange($currentInventories, $simpleArticle);
-                        $this->notifierService->handleStockChange($currentOffers, $simpleArticle);
+                        if (!$stage->isOfferStockUpdatedFor($simpleArticle)) {
+                            $this->updateOffersStock($currentOffers);
+
+                            $stage->setOfferStockUpdatedFor($simpleArticle);
+                        }
+
+                        if (!$stage->isStockChangeHandledFor($simpleArticle)) {
+                            $this->notifierService->prepareForStockChange($currentInventories, $simpleArticle);
+                            $this->notifierService->handleStockChange($currentOffers, $simpleArticle);
+
+                            $stage->setStockChangeHandledFor($simpleArticle);
+                        }
 
                         $fixedSkuIdsService->updateFixedSkuIds($item);
                     } catch (Exception | ApiExceptionInterface | ClientExceptionInterface $e) {
                         $this->logError($e);
+
+                        if ($e instanceof ServiceOverloadedException) {
+                            throw $e;
+                        }
 
                         $errorMessages[$simpleArticle] = sprintf(
                             '`%s` error: %s',
@@ -193,6 +208,7 @@ class StockService extends SimlaCommonService
      * @param bool $supplement
      *
      * @return array<string, mixed>
+     * @throws ServiceOverloadedException
      */
     private function isEveryKitItemAvailable(string $article, int $quantity, bool $supplement): array
     {
@@ -219,6 +235,7 @@ class StockService extends SimlaCommonService
                     $supplement
                 );
             } catch (Exception | ApiExceptionInterface | ClientExceptionInterface $e) {
+                $this->checkServiceOverloaded($e);
                 $this->logError($e);
 
                 $errorMessages[$simpleArticle] = sprintf(
@@ -416,6 +433,7 @@ class StockService extends SimlaCommonService
      * @throws MissingParameterException
      * @throws StoreNotFoundException
      * @throws ValidationException
+     * @throws ServiceOverloadedException
      */
     private function updateOffersStock(array $offers): void
     {
@@ -434,7 +452,13 @@ class StockService extends SimlaCommonService
         $inventoriesUploadRequest         = new InventoriesUploadRequest();
         $inventoriesUploadRequest->offers = $offers;
 
-        $response = $this->client->store->inventoriesUpload($inventoriesUploadRequest);
+        try {
+            $response = $this->client->store->inventoriesUpload($inventoriesUploadRequest);
+        } catch (\Exception | ApiExceptionInterface | ClientExceptionInterface $e) {
+            $this->checkServiceOverloaded($e);
+
+            throw $e;
+        }
 
         $this->logger->debug('InventoriesUpload: ' . json_encode($response, JSON_PRETTY_PRINT));
     }
@@ -445,7 +469,8 @@ class StockService extends SimlaCommonService
 
         $order->id = $orderSample->id;
         $order->site = $orderSample->site;
-        $order->status = $orderSample->status;
+        // no need to change the status of deferred tasks
+        // $order->status = $orderSample->status;
         $order->items = $orderSample->items;
 
         $order = $this->setOrderStatus($order, $errorMessages);

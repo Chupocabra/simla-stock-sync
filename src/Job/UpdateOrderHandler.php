@@ -3,31 +3,47 @@
 namespace App\Job;
 
 use App\Exception\OrderProcessingException;
+use App\Exception\ServiceOverloadedException;
+use App\Service\OrderService;
 use App\Service\RedisService;
 use App\Service\StockService;
+use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use RedisException;
+use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
 
 class UpdateOrderHandler implements MessageHandlerInterface
 {
     private StockService $stockService;
     private RedisService $redisService;
+    private OrderService $orderService;
     private LoggerInterface $logger;
-    public function __construct(StockService $stockService, RedisService $redisService, LoggerInterface $logger)
-    {
+    public function __construct(
+        StockService $stockService,
+        RedisService $redisService,
+        OrderService $orderService,
+        LoggerInterface $logger
+    ) {
         $this->stockService = $stockService;
         $this->redisService = $redisService;
+        $this->orderService = $orderService;
         $this->logger = $logger;
     }
 
     /**
      * @throws RedisException
      * @throws OrderProcessingException
+     * @throws ServiceOverloadedException
      */
     public function __invoke(UpdateOrderEvent $event): void
     {
-        $order = $event->getOrder();
+        try {
+            $order = $this->orderService->getOrder($event->getOrderId(), $event->getSiteCode());
+            $event->setOrder($order);
+        } catch (InvalidArgumentException $exception) {
+            throw new UnrecoverableMessageHandlingException($exception->getMessage(), $exception->getCode());
+        }
 
         $fixedSkuIdsService = $this->stockService->getFixedItemSkuService($order);
 
@@ -59,8 +75,15 @@ class UpdateOrderHandler implements MessageHandlerInterface
             }
         }
 
-        $this->stockService->updateStock($order);
-        $this->releaseKeys($keys);
+        $stage = $event->getStage();
+
+        try {
+            $this->stockService->updateStock($order, $stage);
+        } catch (\Exception $exception) {
+            $this->releaseKeys($keys);
+
+            throw $exception;
+        }
     }
 
     private function releaseKeys(array $keys): void

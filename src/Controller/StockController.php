@@ -4,8 +4,9 @@ namespace App\Controller;
 
 use App\Job\UpdateOrderEvent;
 use App\Service\ResponseService;
-use RetailCrm\Api\Model\Entity\Orders\Order;
+use InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -27,13 +28,20 @@ class StockController extends AbstractController
     }
 
     /**
-     * @param Order $order
+     * @param Request $request
      * @return JsonResponse
      */
-    public function updateByOrder(Order $order): JsonResponse
+    public function updateByOrder(Request $request): JsonResponse
     {
+        $orderId  = $request->request->get('order');
+        $siteCode = $request->request->get('site');
+
+        if (!$orderId && !$siteCode) {
+            throw new InvalidArgumentException('Order can not be found');
+        }
+
         try {
-            $message = new UpdateOrderEvent($order);
+            $message = new UpdateOrderEvent($orderId, $siteCode);
             $this->orderBus->dispatch($message);
 
             return $this->responseService->successfulJsonResponse();

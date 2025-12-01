@@ -8,6 +8,7 @@ framework:
             order.bus:
                 middleware:
                     - 'App\Middleware\LoggerMiddleware'
+                    - 'App\Middleware\ServiceOverloadedMiddleware'
 
         transports:
             orders:

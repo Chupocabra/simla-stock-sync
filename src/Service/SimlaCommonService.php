@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Exception\ServiceOverloadedException;
 use Exception;
 use Psr\Log\LoggerInterface;
 use RetailCrm\Api\Client;
@@ -64,5 +65,21 @@ class SimlaCommonService
         return $message;
     }
 
-}
+    /**
+     * @throws ServiceOverloadedException
+     */
+    protected function checkServiceOverloaded($e): void
+    {
+        if (
+            $e instanceof ApiExceptionInterface &&
+            (
+                $e->getStatusCode() === 429
+                || ($e->getStatusCode() === 503 && $e->getMessage() === 'Service overloaded.')
+            )
+        ) {
+            $this->logger->info('Service overloaded. Throwing exception for re-processing.');
 
+            throw new ServiceOverloadedException($e);
+        }
+    }
+}
