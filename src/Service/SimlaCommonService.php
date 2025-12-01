@@ -70,8 +70,15 @@ class SimlaCommonService
      */
     protected function checkServiceOverloaded($e): void
     {
-        if ($e->getStatusCode() === 503 && $e->getMessage() === 'Service overloaded.') {
+        if (
+            $e instanceof ApiExceptionInterface &&
+            (
+                $e->getStatusCode() === 429
+                || ($e->getStatusCode() === 503 && $e->getMessage() === 'Service overloaded.')
+            )
+        ) {
             $this->logger->info('Service overloaded. Throwing exception for re-processing.');
+
             throw new ServiceOverloadedException($e);
         }
     }
