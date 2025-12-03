@@ -10,7 +10,7 @@ use Symfony\Component\Console\Command\LockableTrait;
 class RedisService
 {
     private Redis $redis;
-    private const SET_OPTIONS = ['EX' => 120];
+    private const SET_OPTIONS = ['EX' => 60];
 
     use LockableTrait;
     public function __construct(string $dsn)

@@ -40,7 +40,6 @@ class UpdateOrderHandler implements MessageHandlerInterface
     {
         try {
             $order = $this->orderService->getOrder($event->getOrderId(), $event->getSiteCode());
-            $event->setOrder($order);
         } catch (InvalidArgumentException $exception) {
             throw new UnrecoverableMessageHandlingException($exception->getMessage(), $exception->getCode());
         }

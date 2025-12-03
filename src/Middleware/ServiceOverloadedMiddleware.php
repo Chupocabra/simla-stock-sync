@@ -13,9 +13,9 @@ use Symfony\Component\Messenger\Stamp\DelayStamp;
 
 class ServiceOverloadedMiddleware implements MiddlewareInterface
 {
-    private const DELAY_SECONDS = 2;
+    private const DELAY_SECONDS = 3;
     // There are also default retry values, so the final number is their multiplication.
-    private const MAX_RETRIES = 30;
+    private const MAX_RETRIES = 20;
 
     private MessageBusInterface $orderBus;
 
