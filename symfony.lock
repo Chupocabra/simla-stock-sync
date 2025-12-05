@@ -2,9 +2,6 @@
     "civicrm/composer-compile-plugin": {
         "version": "v0.15"
     },
-    "clue/stream-filter": {
-        "version": "v1.5.0"
-    },
     "doctrine/annotations": {
         "version": "1.0",
         "recipe": {
@@ -16,6 +13,15 @@
         "files": [
             "config/routes/annotations.yaml"
         ]
+    },
+    "doctrine/deprecations": {
+        "version": "1.1",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "1.0",
+            "ref": "87424683adc81d7dc305eefec1fced883084aab9"
+        }
     },
     "doctrine/lexer": {
         "version": "1.2.1"
@@ -50,20 +56,11 @@
             "config/packages/nyholm_psr7.yaml"
         ]
     },
-    "php-http/curl-client": {
-        "version": "2.2.0"
-    },
     "php-http/discovery": {
         "version": "1.14.0"
     },
     "php-http/httplug": {
         "version": "2.2.0"
-    },
-    "php-http/message": {
-        "version": "1.11.2"
-    },
-    "php-http/message-factory": {
-        "version": "v1.0.2"
     },
     "php-http/promise": {
         "version": "1.1.0"

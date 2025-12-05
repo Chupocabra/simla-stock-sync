@@ -7,9 +7,11 @@ use App\Exception\ServiceOverloadedException;
 use App\Service\OrderService;
 use App\Service\RedisService;
 use App\Service\StockService;
+use App\Service\StoreService;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
-use RedisException;
+use RetailCrm\Api\Interfaces\ApiExceptionInterface;
+use RetailCrm\Api\Interfaces\ClientExceptionInterface;
 use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
 
@@ -18,23 +20,27 @@ class UpdateOrderHandler implements MessageHandlerInterface
     private StockService $stockService;
     private RedisService $redisService;
     private OrderService $orderService;
+    private StoreService $storeService;
     private LoggerInterface $logger;
     public function __construct(
         StockService $stockService,
         RedisService $redisService,
         OrderService $orderService,
+        StoreService $storeService,
         LoggerInterface $logger
     ) {
         $this->stockService = $stockService;
         $this->redisService = $redisService;
         $this->orderService = $orderService;
+        $this->storeService = $storeService;
         $this->logger = $logger;
     }
 
     /**
-     * @throws RedisException
      * @throws OrderProcessingException
      * @throws ServiceOverloadedException
+     * @throws ApiExceptionInterface
+     * @throws ClientExceptionInterface
      */
     public function __invoke(UpdateOrderEvent $event): void
     {
@@ -48,7 +54,7 @@ class UpdateOrderHandler implements MessageHandlerInterface
 
         $articles = [];
         foreach ($order->items as $item) {
-            $articles[$item->id] = $fixedSkuIdsService->getItemArticle($item);
+            $articles[$item->id] = $this->storeService->getItemArticle($fixedSkuIdsService, $item);
         }
 
         $keys = [];
@@ -78,10 +84,8 @@ class UpdateOrderHandler implements MessageHandlerInterface
 
         try {
             $this->stockService->updateStock($order, $stage);
-        } catch (\Exception $exception) {
+        } finally {
             $this->releaseKeys($keys);
-
-            throw $exception;
         }
     }
 

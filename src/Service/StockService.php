@@ -59,6 +59,7 @@ class StockService extends SimlaCommonService
      * @var NotifierService
      */
     private $notifierService;
+    private StoreService $storeService;
 
     use LockableTrait;
 
@@ -67,6 +68,7 @@ class StockService extends SimlaCommonService
         LoggerInterface $logger,
         OrderService $orderService,
         NotifierService $notifierService,
+        StoreService $storeService,
         $generalSiteCode,
         $anotherSiteCodes
     ) {
@@ -76,6 +78,7 @@ class StockService extends SimlaCommonService
         $this->anotherSiteCodes = explode(',', $anotherSiteCodes);
         $this->orderService    = $orderService;
         $this->notifierService = $notifierService;
+        $this->storeService    = $storeService;
     }
 
     public function updateStock(Order $order, JobStage $stage): bool
@@ -93,7 +96,7 @@ class StockService extends SimlaCommonService
 
         foreach ($order->items as $item) {
             $status = $supplement ? self::PRODUCT_STATUS_RETURNED : self::PRODUCT_STATUS_SOLD;
-            $article = $fixedSkuIdsService->getItemArticle($item);
+            $article = $this->storeService->getItemArticle($fixedSkuIdsService, $item);
 
             if (
                 !$article || $item->status === $status
@@ -147,7 +150,7 @@ class StockService extends SimlaCommonService
                             $stage->setStockChangeHandledFor($simpleArticle);
                         }
 
-                        $fixedSkuIdsService->updateFixedSkuIds($item);
+                        $fixedSkuIdsService->updateFixedSkuIds($item, $article);
                     } catch (Exception | ApiExceptionInterface | ClientExceptionInterface $e) {
                         $this->logError($e);
 

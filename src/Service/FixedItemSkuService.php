@@ -30,7 +30,7 @@ class FixedItemSkuService
         $this->supplement = $supplement;
         $this->logger = $logger;
 
-        self::getFixedSkuIdsFromOrder($order);
+        $this->getFixedSkuIdsFromOrder($order);
     }
 
     private function getFixedSkuIdsFromOrder(Order $order): void
@@ -70,15 +70,15 @@ class FixedItemSkuService
         return $item->offer->article ?? null;
     }
 
-    public function updateFixedSkuIds(OrderProduct $item): void
+    public function updateFixedSkuIds(OrderProduct $item, string $article): void
     {
         if ($this->supplement) {
             return;
         }
 
-        $this->logger->debug(sprintf('[%s] %d to %s', __METHOD__, $item->id, $item->offer->article));
+        $this->logger->debug(sprintf('[%s] %d to %s', __METHOD__, $item->id, $article));
 
-        $this->fixedSkuIds[strval($item->id)] = $item->offer->article;
+        $this->fixedSkuIds[strval($item->id)] = $article;
     }
 
     public function setFixedSkuIdsToOrder(Order $order): Order
